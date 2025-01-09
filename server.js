@@ -21,21 +21,20 @@ wss.on('connection', (ws) => {
       peers[peerId] = ws; // Associa l'ID del peer alla connessione WebSocket
       console.log(`Peer registrato con ID: ${peerId}`);
     } else {
-      // Messaggio normale nel formato "sourcePeer->targetPeer:message"
-      const match = textMessage.match(/^(.*)->(.*):(.*)$/);
-      if (match) {
-        const [, sourcePeer, targetPeer, messageBody] = match;
-
-        if (peers[targetPeer]) {
-          // Invia il messaggio al peer specificato
-          peers[targetPeer].send(`From ${sourcePeer}: ${messageBody}`);
-        } else {
-          // Peer target non trovato
-          ws.send(`Errore: Il peer ${targetPeer} non è connesso.`);
-        }
-      } else {
-        ws.send('Errore: Formato del messaggio non valido.');
-      }
+      try {
+          const parsedMessage = JSON.parse(message); // Tenta di analizzare il messaggio come JSON
+      
+          const { sourcePeer, targetPeer, payload } = parsedMessage;
+      
+          // Controlla che il peer target sia connesso
+          if (peers[targetPeer]) {
+            peers[targetPeer].send(JSON.stringify({ from: sourcePeer, data: payload }));
+          } else {
+            ws.send(`Errore: Il peer ${targetPeer} non è connesso.`);
+          }
+        } catch (error) {
+          ws.send('Errore: Formato del messaggio non valido.');
+        } 
     }
   });
 
