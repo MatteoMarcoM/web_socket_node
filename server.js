@@ -22,19 +22,26 @@ wss.on('connection', (ws) => {
       console.log(`Peer registrato con ID: ${peerId}`);
     } else {
       try {
-          const parsedMessage = JSON.parse(message); // Tenta di analizzare il messaggio come JSON
-      
-          const { sourcePeer, targetPeer, payload } = parsedMessage;
-      
-          // Controlla che il peer target sia connesso
-          if (peers[targetPeer]) {
-            peers[targetPeer].send(JSON.stringify({ from: sourcePeer, data: payload }));
-          } else {
-            ws.send(`Errore: Il peer ${targetPeer} non è connesso.`);
-          }
-        } catch (error) {
-          ws.send('Errore: Formato del messaggio non valido.');
-        } 
+        const parsedMessage = JSON.parse(message); // Tenta di analizzare il messaggio come JSON
+
+        const { sourcePeer, targetPeer, payload } = parsedMessage;
+
+        // Controlla che il peer target sia connesso
+        if (peers[targetPeer]) {
+          // Invia il messaggio nel formato corretto
+          const forwardedMessage = {
+            sourcePeer: sourcePeer,
+            targetPeer: targetPeer,
+            payload: payload, // Il payload dovrebbe essere una stringa Base64
+          };
+
+          peers[targetPeer].send(JSON.stringify(forwardedMessage));
+        } else {
+          ws.send(JSON.stringify({ error: `Il peer ${targetPeer} non è connesso.` }));
+        }
+      } catch (error) {
+        ws.send(JSON.stringify({ error: 'Formato del messaggio non valido.' }));
+      }
     }
   });
 
