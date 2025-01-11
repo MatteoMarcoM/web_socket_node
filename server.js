@@ -6,6 +6,19 @@ const wss = new WebSocket.Server({ port: 8080 });
 // Mappatura per tenere traccia dei peer e delle loro connessioni
 const peers = {};
 
+// Funzione per decodificare il payload da Base64 e convertirlo in JSON
+function decodeBase64Payload(base64String, sourcePeer, targetPeer) {
+  try {
+    const decodedString = Buffer.from(base64String, 'base64').toString('utf-8');
+    const json = JSON.parse(decodedString);
+    console.log(`Payload decodificato da Base64 (sourcePeer: ${sourcePeer}, targetPeer: ${targetPeer}):`, json);
+    return json;
+  } catch (error) {
+    console.error(`Errore nella decodifica del payload Base64 (sourcePeer: ${sourcePeer}, targetPeer: ${targetPeer}):`, error.message);
+    return null;
+  }
+}
+
 wss.on('connection', (ws) => {
   console.log('Nuovo peer connesso');
   let peerId = null;
@@ -23,8 +36,16 @@ wss.on('connection', (ws) => {
     } else {
       try {
         const parsedMessage = JSON.parse(message); // Tenta di analizzare il messaggio come JSON
-
         const { sourcePeer, targetPeer, payload } = parsedMessage;
+
+        // Decodifica e mostra il payload se presente
+        if (payload) {
+          const decodedPayload = decodeBase64Payload(payload, sourcePeer, targetPeer);
+          if (!decodedPayload) {
+            ws.send(JSON.stringify({ error: 'Errore nella decodifica del payload Base64.' }));
+            return;
+          }
+        }
 
         // Controlla che il peer target sia connesso
         if (peers[targetPeer]) {
