@@ -1,78 +1,78 @@
 const WebSocket = require('ws');
 
-// Crea un server WebSocket sulla porta 8080
+// Create a WebSocket server on port 8080
 const wss = new WebSocket.Server({ port: 8080 });
 
-// Mappatura per tenere traccia dei peer e delle loro connessioni
+// Mapping to keep track of peers and their connections
 const peers = {};
 
-// Funzione per decodificare il payload da Base64 e convertirlo in JSON
+// Function to decode Base64 payload and convert it to JSON
 function decodeBase64Payload(base64String, sourcePeer, targetPeer) {
   try {
     const decodedString = Buffer.from(base64String, 'base64').toString('utf-8');
     const json = JSON.parse(decodedString);
-    console.log(`Payload decodificato da Base64 (sourcePeer: ${sourcePeer}, targetPeer: ${targetPeer}):`, json);
+    console.log(`Decoded Base64 payload (sourcePeer: ${sourcePeer}, targetPeer: ${targetPeer}):`, json);
     return json;
   } catch (error) {
-    console.error(`Errore nella decodifica del payload Base64 (sourcePeer: ${sourcePeer}, targetPeer: ${targetPeer}):`, error.message);
+    console.error(`Error decoding Base64 payload (sourcePeer: ${sourcePeer}, targetPeer: ${targetPeer}):`, error.message);
     return null;
   }
 }
 
 wss.on('connection', (ws) => {
-  console.log('Nuovo peer connesso');
+  console.log('New peer connected');
   let peerId = null;
 
-  // Quando il server riceve un messaggio
+  // When server receives a message
   ws.on('message', (message) => {
-    const textMessage = message.toString(); // Decodifica il messaggio come stringa
-    console.log('Messaggio ricevuto:', textMessage);
+    const textMessage = message.toString(); // Decode message as string
+    console.log('Message received:', textMessage);
 
     if (!peerId) {
-      // Il primo messaggio è considerato l'ID del peer
+      // First message is considered as peer ID
       peerId = textMessage;
-      peers[peerId] = ws; // Associa l'ID del peer alla connessione WebSocket
-      console.log(`Peer registrato con ID: ${peerId}`);
+      peers[peerId] = ws; // Associate peer ID with WebSocket connection
+      console.log(`Peer registered with ID: ${peerId}`);
     } else {
       try {
-        const parsedMessage = JSON.parse(message); // Tenta di analizzare il messaggio come JSON
+        const parsedMessage = JSON.parse(message); // Try to parse message as JSON
         const { sourcePeer, targetPeer, payload } = parsedMessage;
 
-        // Decodifica e mostra il payload se presente
+        // Decode and display payload if present
         if (payload) {
           const decodedPayload = decodeBase64Payload(payload, sourcePeer, targetPeer);
           if (!decodedPayload) {
-            ws.send(JSON.stringify({ error: 'Errore nella decodifica del payload Base64.' }));
+            ws.send(JSON.stringify({ error: 'Error decoding Base64 payload.' }));
             return;
           }
         }
 
-        // Controlla che il peer target sia connesso
+        // Check if target peer is connected
         if (peers[targetPeer]) {
-          // Invia il messaggio nel formato corretto
+          // Send message in correct format
           const forwardedMessage = {
             sourcePeer: sourcePeer,
             targetPeer: targetPeer,
-            payload: payload, // Il payload dovrebbe essere una stringa Base64
+            payload: payload, // Payload should be a Base64 string
           };
 
           peers[targetPeer].send(JSON.stringify(forwardedMessage));
         } else {
-          ws.send(JSON.stringify({ error: `Il peer ${targetPeer} non è connesso.` }));
+          ws.send(JSON.stringify({ error: `Peer ${targetPeer} is not connected.` }));
         }
       } catch (error) {
-        ws.send(JSON.stringify({ error: 'Formato del messaggio non valido.' }));
+        ws.send(JSON.stringify({ error: 'Invalid message format.' }));
       }
     }
   });
 
-  // Gestisce la disconnessione del peer
+  // Handle peer disconnection
   ws.on('close', () => {
     if (peerId) {
-      delete peers[peerId]; // Rimuove il peer disconnesso
-      console.log(`Peer ${peerId} disconnesso.`);
+      delete peers[peerId]; // Remove disconnected peer
+      console.log(`Peer ${peerId} disconnected.`);
     }
   });
 });
 
-console.log("Server WebSocket in ascolto sulla porta 8080...");
+console.log("WebSocket Server listening on port 8080...");
